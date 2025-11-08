@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Aggregator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.5;
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #d8b4fe, #f9a8d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .rotating {
+            animation: rotate 2s linear infinite;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.625rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.625rem;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .card img {
+            transition: transform 0.3s;
+        }
+
+        .card:hover img {
+            transform: scale(1.05);
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #a855f7, #ec4899);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(to right, #9333ea, #db2777);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: white;
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #a855f7;
+            ring: 2px;
+            ring-color: rgba(168, 85, 247, 0.2);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-blue-950 via-purple-900 to-pink-900">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-blue-950/80 backdrop-blur-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="rotating bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-lg">
+                        <i class="fas fa-sparkles text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-medium gradient-text">AI News Aggregator</h1>
+                        <p class="text-xs text-white/70">Smart summaries • Real-time updates • Personalized insights</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button class="btn-ghost btn rounded-full p-2" onclick="toggleDarkMode()">
+                        <i class="fas fa-moon text-xl"></i>
+                    </button>
+                    <button class="btn btn-primary gap-2" onclick="openAuthModal()" id="authButton">
+                        <i class="fas fa-user"></i>
+                        <span>Sign In</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden py-12 bg-gradient-to-r from-blue-900/50 via-purple-800/50 to-pink-800/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="mb-4 text-white text-4xl font-medium">AI News Hub</h2>
+            <p class="text-white/80 max-w-2xl mx-auto mb-8">
+                Stay informed with AI-powered news curation from around the globe, featuring smart summaries, sentiment
+                analysis,
+                and credibility scoring — all in one intelligent platform.
+            </p>
+
+            <!-- Search Bar -->
+            <div class="max-w-2xl mx-auto relative">
+                <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50"></i>
+                <input type="text" placeholder="Search news..." id="searchInput"
+                    class="pl-12 pr-12 h-12 text-lg bg-white/10 border border-white/20 text-white placeholder-white/50 w-full rounded-lg"
+                    oninput="filterNews()" />
+                <button
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full text-white/70 hover:text-white p-2">
+                    <i class="fas fa-microphone text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Submit News Section -->
+    <section class="border-b border-white/10 bg-blue-950/50 backdrop-blur-sm py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-3 rounded-lg">
+                        <i class="fas fa-bullhorn text-white text-xl"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="text-white text-lg font-medium">Have Breaking News or Found a Problem?</h3>
+                        <p class="text-sm text-white/70">
+                            Share your news stories or report issues. Help keep our community informed!
+                        </p>
+                    </div>
+                </div>
+                <button class="btn btn-primary text-lg px-6 py-3 whitespace-nowrap" onclick="openSubmitModal()">
+                    <i class="fas fa-plus-circle mr-2"></i>
+                    Submit Now
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Bar -->
+    <section class="border-b border-white/10 bg-blue-950/50 backdrop-blur-sm py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-wrap gap-3 justify-center">
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <i class="fas fa-sparkles mr-2"></i>
+                    Smart Summaries
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <i class="fas fa-chart-line mr-2"></i>
+                    Trend Detection
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <i class="fas fa-filter mr-2"></i>
+                    Sentiment Analysis
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <span class="mr-2">🛡️</span>
+                    Fake News Detection
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <span class="mr-2">⭐</span>
+                    Source Credibility
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Tabs -->
+        <div class="space-y-6">
+            <div class="grid grid-cols-3 gap-2 max-w-md mx-auto bg-blue-950/50 p-1 rounded-lg">
+                <button class="tab-button active px-4 py-2 rounded-md font-medium text-white transition-all"
+                    onclick="switchTab('feed')" data-tab="feed">
+                    News Feed
+                </button>
+                <button class="tab-button px-4 py-2 rounded-md font-medium text-white/70 transition-all"
+                    onclick="switchTab('trending')" data-tab="trending">
+                    Trending
+                </button>
+                <button class="tab-button px-4 py-2 rounded-md font-medium text-white/70 transition-all"
+                    onclick="switchTab('bookmarks')" data-tab="bookmarks">
+                    Bookmarks
+                </button>
+            </div>
+
+            <!-- Feed Tab -->
+            <div class="tab-content active space-y-6" id="feedTab">
+                <!-- Category Filter -->
+                <div class="flex flex-wrap gap-2" id="categoryFilter">
+                    <!-- Will be populated by JS -->
+                </div>
+
+                <!-- News Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="newsGrid">
+                    <!-- Will be populated by JS -->
+                </div>
+
+                <div id="noResults" class="hidden card p-12 text-center">
+                    <p class="text-white/70">No articles found matching your criteria.</p>
+                </div>
+            </div>
+
+            <!-- Trending Tab -->
+            <div class="tab-content space-y-6" id="trendingTab">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="trendingGrid">
+                    <!-- Will be populated by JS -->
+                </div>
+            </div>
+
+            <!-- Bookmarks Tab -->
+            <div class="tab-content space-y-6" id="bookmarksTab">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="bookmarksGrid">
+                    <!-- Will be populated by JS -->
+                </div>
+                <div id="noBookmarks" class="card p-12 text-center">
+                    <i class="fas fa-bookmark text-6xl text-white/50 mb-4"></i>
+                    <h3 class="text-white text-xl font-medium">No Bookmarks Yet</h3>
+                    <p class="text-white/70 mt-2">
+                        Start bookmarking articles to save them for later reading.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <h2 class="text-2xl font-medium mb-2">Welcome to AI News Aggregator</h2>
+            <p class="text-gray-600 mb-6">Sign in to access personalized features and save your preferences</p>
+
+            <div class="mb-4">
+                <div class="flex border-b border-gray-200">
+                    <button class="auth-tab active px-4 py-2 font-medium" onclick="switchAuthTab('login')"
+                        data-auth-tab="login">
+                        Login
+                    </button>
+                    <button class="auth-tab px-4 py-2 font-medium text-gray-500" onclick="switchAuthTab('signup')"
+                        data-auth-tab="signup">
+                        Sign Up
+                    </button>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form-content space-y-4" onsubmit="handleLogin(event)">
+                <div>
+                    <label class="block mb-2 font-medium">Email</label>
+                    <input type="email" placeholder="your@email.com" required />
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">Password</label>
+                    <input type="password" placeholder="••••••••" required />
+                </div>
+                <button type="submit" class="btn btn-primary w-full py-3">Login</button>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signupForm" class="auth-form-content hidden space-y-4" onsubmit="handleSignup(event)">
+                <div>
+                    <label class="block mb-2 font-medium">Username</label>
+                    <input type="text" placeholder="johndoe" id="signupUsername" required />
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">Email</label>
+                    <input type="email" placeholder="your@email.com" required />
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">Password</label>
+                    <input type="password" placeholder="••••••••" required />
+                </div>
+                <button type="submit" class="btn btn-primary w-full py-3">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Submit News Modal -->
+    <div id="submitModal" class="modal">
+        <div class="modal-content">
+            <button onclick="closeSubmitModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <h2 class="text-2xl font-medium mb-2">Submit News or Report a Problem</h2>
+            <p class="text-gray-600 mb-6">Share breaking news or report issues you've discovered. Our team will review
+                your submission.</p>
+
+            <form class="space-y-4" onsubmit="handleSubmitNews(event)">
+                <div>
+                    <label class="block mb-2 font-medium">Submission Type *</label>
+                    <select id="submissionType" onchange="updateSubmissionForm()">
+                        <option value="news">News Story</option>
+                        <option value="problem">Report a Problem</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium">Title *</label>
+                    <input type="text" id="submissionTitle" placeholder="Enter news headline..." required />
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium">Description *</label>
+                    <textarea id="submissionDescription" rows="6"
+                        placeholder="Provide a detailed summary of the news story..." required></textarea>
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium">Category *</label>
+                    <select id="submissionCategory" required>
+                        <option value="">Select category</option>
+                        <option value="Politics">Politics</option>
+                        <option value="Business">Business</option>
+                        <option value="Technology">Technology</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Health">Health</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Science">Science</option>
+                        <option value="Environment">Environment</option>
+                        <option value="World">World</option>
+                        <option value="Education">Education</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium" id="sourceLabel">Source / URL *</label>
+                    <input type="text" id="submissionSource" placeholder="https://example.com/article or Source Name"
+                        required />
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="btn btn-outline flex-1 py-3"
+                        onclick="closeSubmitModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary flex-1 py-3">Submit for Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle text-green-500 text-xl"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
+
+    <script>
+        // Mock News Data
+        const MOCK_NEWS = [
+            {
+                id: '1',
+                title: 'New AI Model Surpasses Human Performance in Complex Reasoning Tasks',
+                summary: 'Researchers unveil a breakthrough AI system that demonstrates superior reasoning capabilities across multiple domains, marking a significant milestone in artificial intelligence development.',
+                source: 'AI Research Daily',
+                category: 'Technology',
+                imageUrl: 'https://images.unsplash.com/photo-1697577418970-95d99b5a55cf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlJTIwdGVjaG5vbG9neXxlbnwxfHx8fDE3NjA4NzUzNTB8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '2 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 95,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '2',
+                title: 'Global Climate Summit Reaches Historic Agreement on Carbon Emissions',
+                summary: 'World leaders from 195 nations sign unprecedented treaty committing to net-zero emissions by 2050, with strict enforcement mechanisms and financial support for developing countries.',
+                source: 'Global News Network',
+                category: 'Environment',
+                imageUrl: 'https://images.unsplash.com/photo-1635455604384-cc48ac5ecd72?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbnZpcm9ubWVudCUyMG5hdHVyZXxlbnwxfHx8fDE3NjA4NDg5Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '3 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 92,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '3',
+                title: 'Stock Markets Rally as Federal Reserve Signals Interest Rate Cuts',
+                summary: 'Major indices surge to record highs following central bank announcement of planned rate reductions, boosting investor confidence and economic outlook.',
+                source: 'Financial Times',
+                category: 'Business',
+                imageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMGZpbmFuY2V8ZW58MXx8fHwxNzYwODQ4OTM2fDA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '4 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 88,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '4',
+                title: 'Championship Final Ends in Dramatic Last-Minute Victory',
+                summary: 'Underdog team claims title with stunning goal in injury time, completing remarkable comeback story that captivated millions of fans worldwide.',
+                source: 'Sports Today',
+                category: 'Sports',
+                imageUrl: 'https://images.unsplash.com/photo-1565483276060-e6730c0cc6a1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBzdGFkaXVtfGVufDF8fHx8MTc2MDg3MjU1NXww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '5 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 85,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '5',
+                title: 'Breakthrough Cancer Treatment Shows 90% Success Rate in Clinical Trials',
+                summary: 'Revolutionary immunotherapy approach demonstrates unprecedented effectiveness against aggressive tumors, offering new hope to millions of patients.',
+                source: 'Medical Journal',
+                category: 'Health',
+                imageUrl: 'https://images.unsplash.com/photo-1668874896975-7f874c90600a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFsdGglMjBtZWRpY2FsfGVufDF8fHx8MTc2MDg4NzUxOHww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '6 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 94,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '6',
+                title: 'Presidential Election Results Spark National Debate on Electoral Reform',
+                summary: 'Close race and regional voting patterns renew discussions about electoral system changes, with political analysts examining implications for future campaigns.',
+                source: 'Political Observer',
+                category: 'Politics',
+                imageUrl: 'https://images.unsplash.com/photo-1510993968327-0766450f8a11?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb2xpdGljcyUyMGdvdmVybm1lbnR8ZW58MXx8fHwxNzYwODQ1OTQwfDA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '8 hours ago',
+                sentiment: 'neutral',
+                credibilityScore: 87,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '7',
+                title: 'Award-Winning Film Breaks Box Office Records in Opening Weekend',
+                summary: 'Critically acclaimed drama surpasses expectations with massive global debut, becoming fastest film to reach $500 million worldwide.',
+                source: 'Entertainment Weekly',
+                category: 'Entertainment',
+                imageUrl: 'https://images.unsplash.com/photo-1758225709308-189d0b98787b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbnRlcnRhaW5tZW50JTIwY2VsZWJyaXR5fGVufDF8fHx8MTc2MDg0ODg3M3ww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '10 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 82,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '8',
+                title: 'Major Cybersecurity Breach Affects Millions of Users Globally',
+                summary: 'International investigation launched after hackers compromise major cloud service provider, raising concerns about digital security infrastructure.',
+                source: 'Tech Security Report',
+                category: 'Technology',
+                imageUrl: 'https://images.unsplash.com/photo-1718592168437-8382e5b97736?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjcmltZSUyMGludmVzdGlnYXRpb258ZW58MXx8fHwxNzYwODg3NTE5fDA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '12 hours ago',
+                sentiment: 'negative',
+                credibilityScore: 91,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '9',
+                title: 'UNESCO Announces Free Global Education Initiative for Underprivileged Students',
+                summary: 'Landmark program will provide free online university courses and scholarships to 10 million students in developing nations over the next five years.',
+                source: 'Education News',
+                category: 'Education',
+                imageUrl: 'https://images.unsplash.com/photo-1606996704899-fa6204d20c6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlZHVjYXRpb24lMjB1bml2ZXJzaXR5fGVufDF8fHx8MTc2MDg4NzUxOXww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '1 day ago',
+                sentiment: 'positive',
+                credibilityScore: 89,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '10',
+                title: 'NASA Discovers Earth-Like Planet in Habitable Zone of Nearby Star',
+                summary: 'Advanced telescope array identifies potentially habitable exoplanet just 40 light-years away, showing signs of water vapor and stable atmosphere.',
+                source: 'Space Exploration Today',
+                category: 'Science',
+                imageUrl: 'https://images.unsplash.com/photo-1484931627545-f6d9b3aaa6eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcGFjZSUyMGFzdHJvbm9teXxlbnwxfHx8fDE3NjA4ODc1MTl8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '1 day ago',
+                sentiment: 'positive',
+                credibilityScore: 93,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '11',
+                title: 'Asia-Pacific Economic Forum Addresses Trade Tensions and Growth',
+                summary: 'Regional leaders convene to discuss economic cooperation, digital trade agreements, and strategies for sustainable development in rapidly growing markets.',
+                source: 'World Economic Review',
+                category: 'World',
+                imageUrl: 'https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b3JsZCUyMHRyYXZlbHxlbnwxfHx8fDE3NjA4Njk0NjV8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '1 day ago',
+                sentiment: 'neutral',
+                credibilityScore: 86,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '12',
+                title: 'Humanoid Robots Enter Manufacturing Sector at Scale',
+                summary: 'Major automotive companies announce deployment of advanced humanoid robots in production lines, promising increased efficiency and workplace safety improvements.',
+                source: 'Tech Innovations',
+                category: 'Technology',
+                imageUrl: 'https://images.unsplash.com/photo-1555255707-c07966088b7b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyb2JvdCUyMG1hY2hpbmUlMjBsZWFybmluZ3xlbnwxfHx8fDE3NjA4NzUzNTF8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '2 days ago',
+                sentiment: 'positive',
+                credibilityScore: 88,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            }
+        ];
+
+        const CATEGORIES = ['All', 'Politics', 'Business', 'Technology', 'Sports', 'Health', 'Entertainment', 'Science', 'Environment', 'World', 'Education'];
+
+        // State
+        let newsArticles = [...MOCK_NEWS];
+        let selectedCategory = 'All';
+        let searchQuery = '';
+        let isLoggedIn = false;
+        let username = '';
+
+        // Initialize
+        function init() {
+            renderCategoryFilter();
+            renderNews();
+            renderTrendingNews();
+        }
+
+        // Category Filter
+        function renderCategoryFilter() {
+            const filterContainer = document.getElementById('categoryFilter');
+            filterContainer.innerHTML = CATEGORIES.map(cat => `
+                <button 
+                    class="btn ${selectedCategory === cat ? 'btn-primary' : 'btn-outline'} px-4 py-2"
+                    onclick="selectCategory('${cat}')"
+                >
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function selectCategory(category) {
+            selectedCategory = category;
+            renderCategoryFilter();
+            filterNews();
+        }
+
+        // News Card
+        function createNewsCard(article) {
+            const sentimentColors = {
+                positive: 'bg-green-500/10 text-green-600 border-green-500/20',
+                negative: 'bg-red-500/10 text-red-600 border-red-500/20',
+                neutral: 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+            };
+
+            const credibilityColor = article.credibilityScore >= 80 ? 'text-green-600' :
+                article.credibilityScore >= 60 ? 'text-yellow-600' : 'text-red-600';
+
+            return `
+                <div class="card fade-in-up">
+                    <div class="relative h-48 overflow-hidden bg-gray-800">
+                        <img src="${article.imageUrl}" alt="${article.title}" class="w-full h-full object-cover" />
+                        ${article.isTrending ? `
+                            <span class="badge absolute top-2 left-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+                                <i class="fas fa-chart-line mr-1"></i>
+                                Trending
+                            </span>
+                        ` : ''}
+                        ${article.isFakeNews ? `
+                            <span class="badge absolute top-2 right-2 bg-red-500 text-white border-0">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                Verify
+                            </span>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="p-6 flex-1 flex flex-col">
+                        <div class="flex gap-2 mb-3 flex-wrap">
+                            <span class="badge border border-white/20 text-white/90">${article.category}</span>
+                            <span class="badge ${sentimentColors[article.sentiment]} border">${article.sentiment}</span>
+                        </div>
+                        <h3 class="text-white text-xl font-medium mb-2 line-clamp-2">${article.title}</h3>
+                        <p class="text-white/70 mb-4 line-clamp-3 flex-1">${article.summary}</p>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-shield-alt ${credibilityColor}"></i>
+                                    <span class="text-white/70">
+                                        Credibility: <span class="${credibilityColor}">${article.credibilityScore}%</span>
+                                    </span>
+                                </div>
+                                <span class="text-white/70">${article.source}</span>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-2 border-t border-white/10">
+                                <span class="text-xs text-white/60">${article.publishedAt}</span>
+                                <div class="flex gap-2">
+                                    <button 
+                                        class="btn-ghost p-2 ${article.bookmarked ? 'text-purple-400' : 'text-white/70'}"
+                                        onclick="toggleBookmark('${article.id}')"
+                                    >
+                                        <i class="fas fa-bookmark ${article.bookmarked ? 'fas' : 'far'}"></i>
+                                    </button>
+                                    <button 
+                                        class="btn-ghost p-2 text-white/70"
+                                        onclick="shareArticle('${article.id}')"
+                                    >
+                                        <i class="fas fa-share"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render News
+        function renderNews() {
+            const filteredNews = newsArticles.filter(article => {
+                const matchesCategory = selectedCategory === 'All' || article.category === selectedCategory;
+                const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    article.summary.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesCategory && matchesSearch;
+            });
+
+            const newsGrid = document.getElementById('newsGrid');
+            const noResults = document.getElementById('noResults');
+
+            if (filteredNews.length === 0) {
+                newsGrid.innerHTML = '';
+                noResults.classList.remove('hidden');
+            } else {
+                newsGrid.innerHTML = filteredNews.map(article => createNewsCard(article)).join('');
+                noResults.classList.add('hidden');
+            }
+        }
+
+        function renderTrendingNews() {
+            const trendingNews = newsArticles.filter(a => a.isTrending);
+            const trendingGrid = document.getElementById('trendingGrid');
+            trendingGrid.innerHTML = trendingNews.map(article => createNewsCard(article)).join('');
+        }
+
+        function renderBookmarkedNews() {
+            const bookmarkedNews = newsArticles.filter(a => a.bookmarked);
+            const bookmarksGrid = document.getElementById('bookmarksGrid');
+            const noBookmarks = document.getElementById('noBookmarks');
+
+            if (bookmarkedNews.length === 0) {
+                bookmarksGrid.innerHTML = '';
+                noBookmarks.classList.remove('hidden');
+            } else {
+                bookmarksGrid.innerHTML = bookmarkedNews.map(article => createNewsCard(article)).join('');
+                noBookmarks.classList.add('hidden');
+            }
+        }
+
+        // Filter
+        function filterNews() {
+            searchQuery = document.getElementById('searchInput').value;
+            renderNews();
+        }
+
+        // Bookmark
+        function toggleBookmark(id) {
+            const article = newsArticles.find(a => a.id === id);
+            if (article) {
+                article.bookmarked = !article.bookmarked;
+                renderNews();
+                renderTrendingNews();
+                renderBookmarkedNews();
+            }
+        }
+
+        // Share
+        function shareArticle(id) {
+            const article = newsArticles.find(a => a.id === id);
+            if (article) {
+                showToast('Article link copied to clipboard!');
+            }
+        }
+
+        // Tabs
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'bg-purple-500');
+                btn.classList.add('text-white/70');
+            });
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.add('active', 'bg-purple-500');
+            activeBtn.classList.remove('text-white/70');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            if (tabName === 'feed') {
+                document.getElementById('feedTab').classList.add('active');
+            } else if (tabName === 'trending') {
+                document.getElementById('trendingTab').classList.add('active');
+            } else if (tabName === 'bookmarks') {
+                document.getElementById('bookmarksTab').classList.add('active');
+                renderBookmarkedNews();
+            }
+        }
+
+        // Modals
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function openSubmitModal() {
+            document.getElementById('submitModal').classList.add('active');
+        }
+
+        function closeSubmitModal() {
+            document.getElementById('submitModal').classList.remove('active');
+        }
+
+        // Auth Tabs
+        function switchAuthTab(tabName) {
+            document.querySelectorAll('.auth-tab').forEach(tab => {
+                tab.classList.remove('active', 'border-b-2', 'border-purple-500');
+                tab.classList.add('text-gray-500');
+            });
+            const activeTab = document.querySelector(`[data-auth-tab="${tabName}"]`);
+            activeTab.classList.add('active', 'border-b-2', 'border-purple-500');
+            activeTab.classList.remove('text-gray-500');
+
+            document.querySelectorAll('.auth-form-content').forEach(form => {
+                form.classList.add('hidden');
+            });
+
+            if (tabName === 'login') {
+                document.getElementById('loginForm').classList.remove('hidden');
+            } else {
+                document.getElementById('signupForm').classList.remove('hidden');
+            }
+        }
+
+        // Auth Handlers
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = e.target[0].value;
+            isLoggedIn = true;
+            username = email.split('@')[0];
+            updateAuthButton();
+            closeAuthModal();
+            showToast('Successfully logged in!');
+        }
+
+        function handleSignup(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('signupUsername').value;
+            isLoggedIn = true;
+            username = usernameInput;
+            updateAuthButton();
+            closeAuthModal();
+            showToast('Account created successfully!');
+        }
+
+        function updateAuthButton() {
+            const authButton = document.getElementById('authButton');
+            if (isLoggedIn) {
+                authButton.innerHTML = `
+                    <i class="fas fa-user"></i>
+                    <span>${username}</span>
+                `;
+                authButton.classList.remove('btn-primary');
+                authButton.classList.add('btn-outline');
+            }
+        }
+
+        // Submit News
+        function updateSubmissionForm() {
+            const type = document.getElementById('submissionType').value;
+            const titleInput = document.getElementById('submissionTitle');
+            const descInput = document.getElementById('submissionDescription');
+            const sourceLabel = document.getElementById('sourceLabel');
+            const sourceInput = document.getElementById('submissionSource');
+
+            if (type === 'news') {
+                titleInput.placeholder = 'Enter news headline...';
+                descInput.placeholder = 'Provide a detailed summary of the news story...';
+                sourceLabel.textContent = 'Source / URL *';
+                sourceInput.placeholder = 'https://example.com/article or Source Name';
+            } else {
+                titleInput.placeholder = 'Describe the problem...';
+                descInput.placeholder = 'Provide details about the problem you found...';
+                sourceLabel.textContent = 'Your Name / Contact *';
+                sourceInput.placeholder = 'Your name or email';
+            }
+        }
+
+        function handleSubmitNews(e) {
+            e.preventDefault();
+            const type = document.getElementById('submissionType').value;
+            const title = document.getElementById('submissionTitle').value;
+            const description = document.getElementById('submissionDescription').value;
+            const category = document.getElementById('submissionCategory').value;
+            const source = document.getElementById('submissionSource').value;
+
+            console.log('Submission:', { type, title, description, category, source });
+
+            closeSubmitModal();
+            showToast('Your submission has been received and is under review!');
+
+            // Reset form
+            e.target.reset();
+        }
+
+        // Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Dark Mode
+        function toggleDarkMode() {
+            showToast('Dark mode toggle clicked!');
+        }
+
+        // Close modals on outside click
+        window.onclick = function (event) {
+            const authModal = document.getElementById('authModal');
+            const submitModal = document.getElementById('submitModal');
+
+            if (event.target === authModal) {
+                closeAuthModal();
+            }
+            if (event.target === submitModal) {
+                closeSubmitModal();
+            }
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+
+</html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Aggregator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.5;
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #d8b4fe, #f9a8d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .rotating {
+            animation: rotate 2s linear infinite;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.625rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.625rem;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .card img {
+            transition: transform 0.3s;
+        }
+
+        .card:hover img {
+            transform: scale(1.05);
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #a855f7, #ec4899);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(to right, #9333ea, #db2777);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: white;
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #a855f7;
+            ring: 2px;
+            ring-color: rgba(168, 85, 247, 0.2);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-blue-950 via-purple-900 to-pink-900">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-blue-950/80 backdrop-blur-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="rotating bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-lg">
+                        <i class="fas fa-sparkles text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-medium gradient-text">AI News Aggregator</h1>
+                        <p class="text-xs text-white/70">Smart summaries • Real-time updates • Personalized insights</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button class="btn-ghost btn rounded-full p-2" onclick="toggleDarkMode()">
+                        <i class="fas fa-moon text-xl"></i>
+                    </button>
+                    <button class="btn btn-primary gap-2" onclick="openAuthModal()" id="authButton">
+                        <i class="fas fa-user"></i>
+                        <span>Sign In</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden py-12 bg-gradient-to-r from-blue-900/50 via-purple-800/50 to-pink-800/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="mb-4 text-white text-4xl font-medium">AI News Hub</h2>
+            <p class="text-white/80 max-w-2xl mx-auto mb-8">
+                Stay informed with AI-powered news curation from around the globe, featuring smart summaries, sentiment
+                analysis,
+                and credibility scoring — all in one intelligent platform.
+            </p>
+
+            <!-- Search Bar -->
+            <div class="max-w-2xl mx-auto relative">
+                <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50"></i>
+                <input type="text" placeholder="Search news..." id="searchInput"
+                    class="pl-12 pr-12 h-12 text-lg bg-white/10 border border-white/20 text-white placeholder-white/50 w-full rounded-lg"
+                    oninput="filterNews()" />
+                <button
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full text-white/70 hover:text-white p-2">
+                    <i class="fas fa-microphone text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Submit News Section -->
+    <section class="border-b border-white/10 bg-blue-950/50 backdrop-blur-sm py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-3 rounded-lg">
+                        <i class="fas fa-bullhorn text-white text-xl"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="text-white text-lg font-medium">Have Breaking News or Found a Problem?</h3>
+                        <p class="text-sm text-white/70">
+                            Share your news stories or report issues. Help keep our community informed!
+                        </p>
+                    </div>
+                </div>
+                <button class="btn btn-primary text-lg px-6 py-3 whitespace-nowrap" onclick="openSubmitModal()">
+                    <i class="fas fa-plus-circle mr-2"></i>
+                    Submit Now
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Bar -->
+    <section class="border-b border-white/10 bg-blue-950/50 backdrop-blur-sm py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-wrap gap-3 justify-center">
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <i class="fas fa-sparkles mr-2"></i>
+                    Smart Summaries
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <i class="fas fa-chart-line mr-2"></i>
+                    Trend Detection
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <i class="fas fa-filter mr-2"></i>
+                    Sentiment Analysis
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <span class="mr-2">🛡️</span>
+                    Fake News Detection
+                </span>
+                <span class="badge border border-white/20 text-yellow-400 font-bold">
+                    <span class="mr-2">⭐</span>
+                    Source Credibility
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Tabs -->
+        <div class="space-y-6">
+            <div class="grid grid-cols-3 gap-2 max-w-md mx-auto bg-blue-950/50 p-1 rounded-lg">
+                <button class="tab-button active px-4 py-2 rounded-md font-medium text-white transition-all"
+                    onclick="switchTab('feed')" data-tab="feed">
+                    News Feed
+                </button>
+                <button class="tab-button px-4 py-2 rounded-md font-medium text-white/70 transition-all"
+                    onclick="switchTab('trending')" data-tab="trending">
+                    Trending
+                </button>
+                <button class="tab-button px-4 py-2 rounded-md font-medium text-white/70 transition-all"
+                    onclick="switchTab('bookmarks')" data-tab="bookmarks">
+                    Bookmarks
+                </button>
+            </div>
+
+            <!-- Feed Tab -->
+            <div class="tab-content active space-y-6" id="feedTab">
+                <!-- Category Filter -->
+                <div class="flex flex-wrap gap-2" id="categoryFilter">
+                    <!-- Will be populated by JS -->
+                </div>
+
+                <!-- News Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="newsGrid">
+                    <!-- Will be populated by JS -->
+                </div>
+
+                <div id="noResults" class="hidden card p-12 text-center">
+                    <p class="text-white/70">No articles found matching your criteria.</p>
+                </div>
+            </div>
+
+            <!-- Trending Tab -->
+            <div class="tab-content space-y-6" id="trendingTab">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="trendingGrid">
+                    <!-- Will be populated by JS -->
+                </div>
+            </div>
+
+            <!-- Bookmarks Tab -->
+            <div class="tab-content space-y-6" id="bookmarksTab">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="bookmarksGrid">
+                    <!-- Will be populated by JS -->
+                </div>
+                <div id="noBookmarks" class="card p-12 text-center">
+                    <i class="fas fa-bookmark text-6xl text-white/50 mb-4"></i>
+                    <h3 class="text-white text-xl font-medium">No Bookmarks Yet</h3>
+                    <p class="text-white/70 mt-2">
+                        Start bookmarking articles to save them for later reading.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <h2 class="text-2xl font-medium mb-2">Welcome to AI News Aggregator</h2>
+            <p class="text-gray-600 mb-6">Sign in to access personalized features and save your preferences</p>
+
+            <div class="mb-4">
+                <div class="flex border-b border-gray-200">
+                    <button class="auth-tab active px-4 py-2 font-medium" onclick="switchAuthTab('login')"
+                        data-auth-tab="login">
+                        Login
+                    </button>
+                    <button class="auth-tab px-4 py-2 font-medium text-gray-500" onclick="switchAuthTab('signup')"
+                        data-auth-tab="signup">
+                        Sign Up
+                    </button>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form-content space-y-4" onsubmit="handleLogin(event)">
+                <div>
+                    <label class="block mb-2 font-medium">Email</label>
+                    <input type="email" placeholder="your@email.com" required />
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">Password</label>
+                    <input type="password" placeholder="••••••••" required />
+                </div>
+                <button type="submit" class="btn btn-primary w-full py-3">Login</button>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signupForm" class="auth-form-content hidden space-y-4" onsubmit="handleSignup(event)">
+                <div>
+                    <label class="block mb-2 font-medium">Username</label>
+                    <input type="text" placeholder="johndoe" id="signupUsername" required />
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">Email</label>
+                    <input type="email" placeholder="your@email.com" required />
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">Password</label>
+                    <input type="password" placeholder="••••••••" required />
+                </div>
+                <button type="submit" class="btn btn-primary w-full py-3">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Submit News Modal -->
+    <div id="submitModal" class="modal">
+        <div class="modal-content">
+            <button onclick="closeSubmitModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <h2 class="text-2xl font-medium mb-2">Submit News or Report a Problem</h2>
+            <p class="text-gray-600 mb-6">Share breaking news or report issues you've discovered. Our team will review
+                your submission.</p>
+
+            <form class="space-y-4" onsubmit="handleSubmitNews(event)">
+                <div>
+                    <label class="block mb-2 font-medium">Submission Type *</label>
+                    <select id="submissionType" onchange="updateSubmissionForm()">
+                        <option value="news">News Story</option>
+                        <option value="problem">Report a Problem</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium">Title *</label>
+                    <input type="text" id="submissionTitle" placeholder="Enter news headline..." required />
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium">Description *</label>
+                    <textarea id="submissionDescription" rows="6"
+                        placeholder="Provide a detailed summary of the news story..." required></textarea>
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium">Category *</label>
+                    <select id="submissionCategory" required>
+                        <option value="">Select category</option>
+                        <option value="Politics">Politics</option>
+                        <option value="Business">Business</option>
+                        <option value="Technology">Technology</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Health">Health</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Science">Science</option>
+                        <option value="Environment">Environment</option>
+                        <option value="World">World</option>
+                        <option value="Education">Education</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-medium" id="sourceLabel">Source / URL *</label>
+                    <input type="text" id="submissionSource" placeholder="https://example.com/article or Source Name"
+                        required />
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="btn btn-outline flex-1 py-3"
+                        onclick="closeSubmitModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary flex-1 py-3">Submit for Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle text-green-500 text-xl"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
+
+    <script>
+        // Mock News Data
+        const MOCK_NEWS = [
+            {
+                id: '1',
+                title: 'New AI Model Surpasses Human Performance in Complex Reasoning Tasks',
+                summary: 'Researchers unveil a breakthrough AI system that demonstrates superior reasoning capabilities across multiple domains, marking a significant milestone in artificial intelligence development.',
+                source: 'AI Research Daily',
+                category: 'Technology',
+                imageUrl: 'https://images.unsplash.com/photo-1697577418970-95d99b5a55cf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlJTIwdGVjaG5vbG9neXxlbnwxfHx8fDE3NjA4NzUzNTB8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '2 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 95,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '2',
+                title: 'Global Climate Summit Reaches Historic Agreement on Carbon Emissions',
+                summary: 'World leaders from 195 nations sign unprecedented treaty committing to net-zero emissions by 2050, with strict enforcement mechanisms and financial support for developing countries.',
+                source: 'Global News Network',
+                category: 'Environment',
+                imageUrl: 'https://images.unsplash.com/photo-1635455604384-cc48ac5ecd72?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbnZpcm9ubWVudCUyMG5hdHVyZXxlbnwxfHx8fDE3NjA4NDg5Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '3 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 92,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '3',
+                title: 'Stock Markets Rally as Federal Reserve Signals Interest Rate Cuts',
+                summary: 'Major indices surge to record highs following central bank announcement of planned rate reductions, boosting investor confidence and economic outlook.',
+                source: 'Financial Times',
+                category: 'Business',
+                imageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMGZpbmFuY2V8ZW58MXx8fHwxNzYwODQ4OTM2fDA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '4 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 88,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '4',
+                title: 'Championship Final Ends in Dramatic Last-Minute Victory',
+                summary: 'Underdog team claims title with stunning goal in injury time, completing remarkable comeback story that captivated millions of fans worldwide.',
+                source: 'Sports Today',
+                category: 'Sports',
+                imageUrl: 'https://images.unsplash.com/photo-1565483276060-e6730c0cc6a1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBzdGFkaXVtfGVufDF8fHx8MTc2MDg3MjU1NXww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '5 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 85,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '5',
+                title: 'Breakthrough Cancer Treatment Shows 90% Success Rate in Clinical Trials',
+                summary: 'Revolutionary immunotherapy approach demonstrates unprecedented effectiveness against aggressive tumors, offering new hope to millions of patients.',
+                source: 'Medical Journal',
+                category: 'Health',
+                imageUrl: 'https://images.unsplash.com/photo-1668874896975-7f874c90600a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFsdGglMjBtZWRpY2FsfGVufDF8fHx8MTc2MDg4NzUxOHww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '6 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 94,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '6',
+                title: 'Presidential Election Results Spark National Debate on Electoral Reform',
+                summary: 'Close race and regional voting patterns renew discussions about electoral system changes, with political analysts examining implications for future campaigns.',
+                source: 'Political Observer',
+                category: 'Politics',
+                imageUrl: 'https://images.unsplash.com/photo-1510993968327-0766450f8a11?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb2xpdGljcyUyMGdvdmVybm1lbnR8ZW58MXx8fHwxNzYwODQ1OTQwfDA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '8 hours ago',
+                sentiment: 'neutral',
+                credibilityScore: 87,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '7',
+                title: 'Award-Winning Film Breaks Box Office Records in Opening Weekend',
+                summary: 'Critically acclaimed drama surpasses expectations with massive global debut, becoming fastest film to reach $500 million worldwide.',
+                source: 'Entertainment Weekly',
+                category: 'Entertainment',
+                imageUrl: 'https://images.unsplash.com/photo-1758225709308-189d0b98787b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbnRlcnRhaW5tZW50JTIwY2VsZWJyaXR5fGVufDF8fHx8MTc2MDg0ODg3M3ww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '10 hours ago',
+                sentiment: 'positive',
+                credibilityScore: 82,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '8',
+                title: 'Major Cybersecurity Breach Affects Millions of Users Globally',
+                summary: 'International investigation launched after hackers compromise major cloud service provider, raising concerns about digital security infrastructure.',
+                source: 'Tech Security Report',
+                category: 'Technology',
+                imageUrl: 'https://images.unsplash.com/photo-1718592168437-8382e5b97736?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjcmltZSUyMGludmVzdGlnYXRpb258ZW58MXx8fHwxNzYwODg3NTE5fDA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '12 hours ago',
+                sentiment: 'negative',
+                credibilityScore: 91,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '9',
+                title: 'UNESCO Announces Free Global Education Initiative for Underprivileged Students',
+                summary: 'Landmark program will provide free online university courses and scholarships to 10 million students in developing nations over the next five years.',
+                source: 'Education News',
+                category: 'Education',
+                imageUrl: 'https://images.unsplash.com/photo-1606996704899-fa6204d20c6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlZHVjYXRpb24lMjB1bml2ZXJzaXR5fGVufDF8fHx8MTc2MDg4NzUxOXww&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '1 day ago',
+                sentiment: 'positive',
+                credibilityScore: 89,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '10',
+                title: 'NASA Discovers Earth-Like Planet in Habitable Zone of Nearby Star',
+                summary: 'Advanced telescope array identifies potentially habitable exoplanet just 40 light-years away, showing signs of water vapor and stable atmosphere.',
+                source: 'Space Exploration Today',
+                category: 'Science',
+                imageUrl: 'https://images.unsplash.com/photo-1484931627545-f6d9b3aaa6eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcGFjZSUyMGFzdHJvbm9teXxlbnwxfHx8fDE3NjA4ODc1MTl8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '1 day ago',
+                sentiment: 'positive',
+                credibilityScore: 93,
+                isFakeNews: false,
+                isTrending: true,
+                bookmarked: false
+            },
+            {
+                id: '11',
+                title: 'Asia-Pacific Economic Forum Addresses Trade Tensions and Growth',
+                summary: 'Regional leaders convene to discuss economic cooperation, digital trade agreements, and strategies for sustainable development in rapidly growing markets.',
+                source: 'World Economic Review',
+                category: 'World',
+                imageUrl: 'https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b3JsZCUyMHRyYXZlbHxlbnwxfHx8fDE3NjA4Njk0NjV8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '1 day ago',
+                sentiment: 'neutral',
+                credibilityScore: 86,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            },
+            {
+                id: '12',
+                title: 'Humanoid Robots Enter Manufacturing Sector at Scale',
+                summary: 'Major automotive companies announce deployment of advanced humanoid robots in production lines, promising increased efficiency and workplace safety improvements.',
+                source: 'Tech Innovations',
+                category: 'Technology',
+                imageUrl: 'https://images.unsplash.com/photo-1555255707-c07966088b7b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyb2JvdCUyMG1hY2hpbmUlMjBsZWFybmluZ3xlbnwxfHx8fDE3NjA4NzUzNTF8MA&ixlib=rb-4.1.0&q=80&w=1080',
+                publishedAt: '2 days ago',
+                sentiment: 'positive',
+                credibilityScore: 88,
+                isFakeNews: false,
+                isTrending: false,
+                bookmarked: false
+            }
+        ];
+
+        const CATEGORIES = ['All', 'Politics', 'Business', 'Technology', 'Sports', 'Health', 'Entertainment', 'Science', 'Environment', 'World', 'Education'];
+
+        // State
+        let newsArticles = [...MOCK_NEWS];
+        let selectedCategory = 'All';
+        let searchQuery = '';
+        let isLoggedIn = false;
+        let username = '';
+
+        // Initialize
+        function init() {
+            renderCategoryFilter();
+            renderNews();
+            renderTrendingNews();
+        }
+
+        // Category Filter
+        function renderCategoryFilter() {
+            const filterContainer = document.getElementById('categoryFilter');
+            filterContainer.innerHTML = CATEGORIES.map(cat => `
+                <button 
+                    class="btn ${selectedCategory === cat ? 'btn-primary' : 'btn-outline'} px-4 py-2"
+                    onclick="selectCategory('${cat}')"
+                >
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function selectCategory(category) {
+            selectedCategory = category;
+            renderCategoryFilter();
+            filterNews();
+        }
+
+        // News Card
+        function createNewsCard(article) {
+            const sentimentColors = {
+                positive: 'bg-green-500/10 text-green-600 border-green-500/20',
+                negative: 'bg-red-500/10 text-red-600 border-red-500/20',
+                neutral: 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+            };
+
+            const credibilityColor = article.credibilityScore >= 80 ? 'text-green-600' :
+                article.credibilityScore >= 60 ? 'text-yellow-600' : 'text-red-600';
+
+            return `
+                <div class="card fade-in-up">
+                    <div class="relative h-48 overflow-hidden bg-gray-800">
+                        <img src="${article.imageUrl}" alt="${article.title}" class="w-full h-full object-cover" />
+                        ${article.isTrending ? `
+                            <span class="badge absolute top-2 left-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+                                <i class="fas fa-chart-line mr-1"></i>
+                                Trending
+                            </span>
+                        ` : ''}
+                        ${article.isFakeNews ? `
+                            <span class="badge absolute top-2 right-2 bg-red-500 text-white border-0">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                Verify
+                            </span>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="p-6 flex-1 flex flex-col">
+                        <div class="flex gap-2 mb-3 flex-wrap">
+                            <span class="badge border border-white/20 text-white/90">${article.category}</span>
+                            <span class="badge ${sentimentColors[article.sentiment]} border">${article.sentiment}</span>
+                        </div>
+                        <h3 class="text-white text-xl font-medium mb-2 line-clamp-2">${article.title}</h3>
+                        <p class="text-white/70 mb-4 line-clamp-3 flex-1">${article.summary}</p>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-shield-alt ${credibilityColor}"></i>
+                                    <span class="text-white/70">
+                                        Credibility: <span class="${credibilityColor}">${article.credibilityScore}%</span>
+                                    </span>
+                                </div>
+                                <span class="text-white/70">${article.source}</span>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-2 border-t border-white/10">
+                                <span class="text-xs text-white/60">${article.publishedAt}</span>
+                                <div class="flex gap-2">
+                                    <button 
+                                        class="btn-ghost p-2 ${article.bookmarked ? 'text-purple-400' : 'text-white/70'}"
+                                        onclick="toggleBookmark('${article.id}')"
+                                    >
+                                        <i class="fas fa-bookmark ${article.bookmarked ? 'fas' : 'far'}"></i>
+                                    </button>
+                                    <button 
+                                        class="btn-ghost p-2 text-white/70"
+                                        onclick="shareArticle('${article.id}')"
+                                    >
+                                        <i class="fas fa-share"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render News
+        function renderNews() {
+            const filteredNews = newsArticles.filter(article => {
+                const matchesCategory = selectedCategory === 'All' || article.category === selectedCategory;
+                const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    article.summary.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesCategory && matchesSearch;
+            });
+
+            const newsGrid = document.getElementById('newsGrid');
+            const noResults = document.getElementById('noResults');
+
+            if (filteredNews.length === 0) {
+                newsGrid.innerHTML = '';
+                noResults.classList.remove('hidden');
+            } else {
+                newsGrid.innerHTML = filteredNews.map(article => createNewsCard(article)).join('');
+                noResults.classList.add('hidden');
+            }
+        }
+
+        function renderTrendingNews() {
+            const trendingNews = newsArticles.filter(a => a.isTrending);
+            const trendingGrid = document.getElementById('trendingGrid');
+            trendingGrid.innerHTML = trendingNews.map(article => createNewsCard(article)).join('');
+        }
+
+        function renderBookmarkedNews() {
+            const bookmarkedNews = newsArticles.filter(a => a.bookmarked);
+            const bookmarksGrid = document.getElementById('bookmarksGrid');
+            const noBookmarks = document.getElementById('noBookmarks');
+
+            if (bookmarkedNews.length === 0) {
+                bookmarksGrid.innerHTML = '';
+                noBookmarks.classList.remove('hidden');
+            } else {
+                bookmarksGrid.innerHTML = bookmarkedNews.map(article => createNewsCard(article)).join('');
+                noBookmarks.classList.add('hidden');
+            }
+        }
+
+        // Filter
+        function filterNews() {
+            searchQuery = document.getElementById('searchInput').value;
+            renderNews();
+        }
+
+        // Bookmark
+        function toggleBookmark(id) {
+            const article = newsArticles.find(a => a.id === id);
+            if (article) {
+                article.bookmarked = !article.bookmarked;
+                renderNews();
+                renderTrendingNews();
+                renderBookmarkedNews();
+            }
+        }
+
+        // Share
+        function shareArticle(id) {
+            const article = newsArticles.find(a => a.id === id);
+            if (article) {
+                showToast('Article link copied to clipboard!');
+            }
+        }
+
+        // Tabs
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'bg-purple-500');
+                btn.classList.add('text-white/70');
+            });
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.add('active', 'bg-purple-500');
+            activeBtn.classList.remove('text-white/70');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            if (tabName === 'feed') {
+                document.getElementById('feedTab').classList.add('active');
+            } else if (tabName === 'trending') {
+                document.getElementById('trendingTab').classList.add('active');
+            } else if (tabName === 'bookmarks') {
+                document.getElementById('bookmarksTab').classList.add('active');
+                renderBookmarkedNews();
+            }
+        }
+
+        // Modals
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function openSubmitModal() {
+            document.getElementById('submitModal').classList.add('active');
+        }
+
+        function closeSubmitModal() {
+            document.getElementById('submitModal').classList.remove('active');
+        }
+
+        // Auth Tabs
+        function switchAuthTab(tabName) {
+            document.querySelectorAll('.auth-tab').forEach(tab => {
+                tab.classList.remove('active', 'border-b-2', 'border-purple-500');
+                tab.classList.add('text-gray-500');
+            });
+            const activeTab = document.querySelector(`[data-auth-tab="${tabName}"]`);
+            activeTab.classList.add('active', 'border-b-2', 'border-purple-500');
+            activeTab.classList.remove('text-gray-500');
+
+            document.querySelectorAll('.auth-form-content').forEach(form => {
+                form.classList.add('hidden');
+            });
+
+            if (tabName === 'login') {
+                document.getElementById('loginForm').classList.remove('hidden');
+            } else {
+                document.getElementById('signupForm').classList.remove('hidden');
+            }
+        }
+
+        // Auth Handlers
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = e.target[0].value;
+            isLoggedIn = true;
+            username = email.split('@')[0];
+            updateAuthButton();
+            closeAuthModal();
+            showToast('Successfully logged in!');
+        }
+
+        function handleSignup(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('signupUsername').value;
+            isLoggedIn = true;
+            username = usernameInput;
+            updateAuthButton();
+            closeAuthModal();
+            showToast('Account created successfully!');
+        }
+
+        function updateAuthButton() {
+            const authButton = document.getElementById('authButton');
+            if (isLoggedIn) {
+                authButton.innerHTML = `
+                    <i class="fas fa-user"></i>
+                    <span>${username}</span>
+                `;
+                authButton.classList.remove('btn-primary');
+                authButton.classList.add('btn-outline');
+            }
+        }
+
+        // Submit News
+        function updateSubmissionForm() {
+            const type = document.getElementById('submissionType').value;
+            const titleInput = document.getElementById('submissionTitle');
+            const descInput = document.getElementById('submissionDescription');
+            const sourceLabel = document.getElementById('sourceLabel');
+            const sourceInput = document.getElementById('submissionSource');
+
+            if (type === 'news') {
+                titleInput.placeholder = 'Enter news headline...';
+                descInput.placeholder = 'Provide a detailed summary of the news story...';
+                sourceLabel.textContent = 'Source / URL *';
+                sourceInput.placeholder = 'https://example.com/article or Source Name';
+            } else {
+                titleInput.placeholder = 'Describe the problem...';
+                descInput.placeholder = 'Provide details about the problem you found...';
+                sourceLabel.textContent = 'Your Name / Contact *';
+                sourceInput.placeholder = 'Your name or email';
+            }
+        }
+
+        function handleSubmitNews(e) {
+            e.preventDefault();
+            const type = document.getElementById('submissionType').value;
+            const title = document.getElementById('submissionTitle').value;
+            const description = document.getElementById('submissionDescription').value;
+            const category = document.getElementById('submissionCategory').value;
+            const source = document.getElementById('submissionSource').value;
+
+            console.log('Submission:', { type, title, description, category, source });
+
+            closeSubmitModal();
+            showToast('Your submission has been received and is under review!');
+
+            // Reset form
+            e.target.reset();
+        }
+
+        // Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Dark Mode
+        function toggleDarkMode() {
+            showToast('Dark mode toggle clicked!');
+        }
+
+        // Close modals on outside click
+        window.onclick = function (event) {
+            const authModal = document.getElementById('authModal');
+            const submitModal = document.getElementById('submitModal');
+
+            if (event.target === authModal) {
+                closeAuthModal();
+            }
+            if (event.target === submitModal) {
+                closeSubmitModal();
+            }
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+
+</html>
